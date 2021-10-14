@@ -25,7 +25,7 @@ use {
     error::EscrowError,
     anchor_lang::prelude::*,
     anchor_lang::solana_program,
-    anchor_spl::token::{self, Token, Mint, TokenAccount, Transfer,  InitializeAccount},
+    anchor_spl::token::{self, Token, Mint, TokenAccount, Transfer, InitializeAccount},
     spl_token::solana_program::native_token::sol_to_lamports
 };
 
@@ -40,9 +40,7 @@ pub mod cofre {
 
     pub fn initialize<'info>(
         ctx: Context<'_, '_, '_, 'info, Initialize<'info>>,
-        maker_amount: u64,
-        taker_amount: u64,
-        vault_bump: u8,
+        data: InitializeData
     ) -> ProgramResult {
         let main_accounts: (TokenResult, TokenResult) =
             (Account::try_from(&ctx.accounts.from_maker_account),
@@ -77,8 +75,8 @@ pub mod cofre {
                             return Err(EscrowError::InvalidTrade.into());
                         }
 
-                        ctx.accounts.initialize_token_vault(from_mint.to_account_info(), vault_bump)?;
-                        ctx.accounts.transfer_tokens_to_vault(maker_amount)?;
+                        ctx.accounts.initialize_token_vault(from_mint.to_account_info(), data.vault_bump)?;
+                        ctx.accounts.transfer_tokens_to_vault(data.maker_amount)?;
 
                         Trade::SplSpl {
                             // TODO Remove from_token
@@ -105,8 +103,8 @@ pub mod cofre {
                             "from_token does not match its corresponding mint"
                         );
 
-                        ctx.accounts.initialize_token_vault(from_mint.to_account_info(), vault_bump)?;
-                        ctx.accounts.transfer_tokens_to_vault(maker_amount)?;
+                        ctx.accounts.initialize_token_vault(from_mint.to_account_info(), data.vault_bump)?;
+                        ctx.accounts.transfer_tokens_to_vault(data.maker_amount)?;
 
                         Trade::SplSol {
                             from_token: from_token.key(),
@@ -137,7 +135,7 @@ pub mod cofre {
                         );
 
                         // SOL Transfer to vault
-                        ctx.accounts.initialize_native_vault(maker_amount)?;
+                        ctx.accounts.initialize_native_vault(data.maker_amount)?;
                         assert_owner!(ctx.accounts.escrow_vault, solana_program::system_program::ID);
 
                         Trade::SolSpl {
@@ -166,8 +164,9 @@ pub mod cofre {
         escrow_state.maker = ctx.accounts.maker.key();
         escrow_state.trade = trade;
         escrow_state.vault = ctx.accounts.escrow_vault.key();
-        escrow_state.maker_amount = maker_amount;
-        escrow_state.taker_amount = taker_amount;
+        escrow_state.maker_amount = data.maker_amount;
+        escrow_state.taker_amount = data.taker_amount;
+        escrow_state.target_taker = data.target_taker;
 
         Ok(())
     }
@@ -203,6 +202,13 @@ pub mod cofre {
     }
 
     pub fn exchange(ctx: Context<Exchange>, vault_bump: u8) -> ProgramResult {
+        if let Some(target_taker) = ctx.accounts.escrow_state.target_taker {
+            assert_keys!(
+                target_taker, ctx.accounts.taker,
+                "target_taker in escrow_state does not match taker"
+            );
+        }
+
         match ctx.accounts.escrow_state.trade {
             Trade::SplSpl { to_token, .. } => {
                 assert_keys!(
@@ -274,7 +280,7 @@ pub mod cofre {
 }
 
 #[derive(Accounts)]
-#[instruction(maker_amount: u64, taker_amount: u64, vault_bump: u8)]
+#[instruction(data: InitializeData)]
 pub struct Initialize<'info> {
     #[account(mut)]
     pub maker: Signer<'info>,
@@ -284,7 +290,7 @@ pub struct Initialize<'info> {
     #[account(
         mut,
         seeds = [escrow_state.key().as_ref()],
-        bump = vault_bump
+        bump = data.vault_bump
     )]
     pub escrow_vault: AccountInfo<'info>,
     #[account(init, payer = maker, space = 8 + EscrowState::LEN)]
@@ -364,6 +370,7 @@ pub struct EscrowState {
     // TODO Change these to f64 to support decimals
     pub maker_amount: u64,
     pub taker_amount: u64,
+    pub target_taker: Option<Pubkey>
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
@@ -394,7 +401,16 @@ impl EscrowState {
         1 +        // Trade Enum Discriminator
         (32 * 4) + // Trade Max Pubkeys
         8 +        // Maker amount
-        8;         // Taker amount
+        8 +        // Taker amount
+        1 + 32;    // Maybe Taker Pubkey, extra byte for Option
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct InitializeData {
+    maker_amount: u64,
+    taker_amount: u64,
+    vault_bump: u8,
+    target_taker: Option<Pubkey>
 }
 
 impl<'info> Initialize<'info> {

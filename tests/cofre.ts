@@ -143,9 +143,12 @@ describe("cofre", () => {
 
     it("Initialize", async () => {
       await program.rpc.initialize(
-        new anchor.BN(makerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(makerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
@@ -267,9 +270,12 @@ describe("cofre", () => {
       )
 
       await program.rpc.initialize(
-        new anchor.BN(newMakerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(newMakerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
@@ -314,6 +320,86 @@ describe("cofre", () => {
       assert.strictEqual(escrowVaultAccountInfo, null)
       assert.strictEqual(escrowStateAccountInfo, null)
     })
+
+    it("Target Taker should be checked", async () => {
+      // Put back tokens into maker token A account.
+      // For some reason we need to change a value otherwise repeating the transaction takes too long and expires mocha timeout
+      let newMakerAmount = makerAmount + 2;
+      await mintA.mintTo(
+        makerTokenA,
+        mintAuthority.publicKey,
+        [mintAuthority],
+        newMakerAmount
+      );
+
+      await program.rpc.initialize(
+        {
+          makerAmount: new anchor.BN(newMakerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          // NOTE The maker is set to be the only pubkey allowed to exchange
+          targetTaker: maker.publicKey
+        },
+        {
+          accounts: {
+            maker: maker.publicKey,
+            fromMakerAccount: makerTokenA,
+            toMakerAccount: makerTokenB,
+            escrowVault: escrowVault,
+            escrowState: escrowState.publicKey,
+            systemProgram: anchor.web3.SystemProgram.programId,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          },
+          signers: [maker, escrowState],
+          remainingAccounts: [
+            { pubkey: mintA.publicKey, isWritable: false, isSigner: false },
+            { pubkey: mintB.publicKey, isWritable: false, isSigner: false },
+          ],
+        }
+      );
+      // Try to execute the escrow
+      assert.rejects(
+        program.rpc.exchange(new anchor.BN(vaultBump), {
+          accounts: {
+            // This taker won't match the targetTaker set above
+            taker: taker.publicKey,
+            fromTakerAccount: takerTokenB,
+            toTakerAccount: takerTokenA,
+            maker: maker.publicKey,
+            toMakerAccount: makerTokenB,
+            escrowVault: escrowVault,
+            escrowState: escrowState.publicKey,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            // TODO Can we avoid passing in the system program?
+            systemProgram: anchor.web3.SystemProgram.programId
+          },
+          signers: [taker]
+        }),
+        (err) => {
+          return err.logs.includes("target_taker in escrow_state does not match taker");
+        }
+      )
+
+      // Make sure the escrow vault + state are released
+      await program.rpc.exchange(new anchor.BN(vaultBump), {
+        accounts: {
+          // This taker won't match the targetTaker set above
+          taker: maker.publicKey,
+          fromTakerAccount: makerTokenB,
+          toTakerAccount: makerTokenA,
+          maker: maker.publicKey,
+          toMakerAccount: makerTokenB,
+          escrowVault: escrowVault,
+          escrowState: escrowState.publicKey,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          // TODO Can we avoid passing in the system program?
+          systemProgram: anchor.web3.SystemProgram.programId
+        },
+        signers: [maker]
+      });
+
+    });
   })
 
   describe("SolSpl trade", () => {
@@ -328,9 +414,12 @@ describe("cofre", () => {
     it("Initialize", async () => {
       let makerBeforeEscrow = await provider.connection.getAccountInfo(maker.publicKey)
       let transactionSignature = await program.rpc.initialize(
-        new anchor.BN(makerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(makerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
@@ -461,9 +550,12 @@ describe("cofre", () => {
       let makerBeforeEscrow = await provider.connection.getAccountInfo(maker.publicKey)
 
       await program.rpc.initialize(
-        new anchor.BN(newMakerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(newMakerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
@@ -516,9 +608,12 @@ describe("cofre", () => {
     it("Initialize", async () => {
       let makerBeforeEscrow = await provider.connection.getAccountInfo(maker.publicKey)
       let transactionSignature = await program.rpc.initialize(
-        new anchor.BN(makerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(makerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
@@ -652,9 +747,12 @@ describe("cofre", () => {
       let makerBeforeEscrow = await provider.connection.getAccountInfo(maker.publicKey)
 
       await program.rpc.initialize(
-        new anchor.BN(newMakerAmount),
-        new anchor.BN(takerAmount),
-        new anchor.BN(vaultBump),
+        {
+          makerAmount: new anchor.BN(newMakerAmount),
+          takerAmount: new anchor.BN(takerAmount),
+          vaultBump: new anchor.BN(vaultBump),
+          targetTaker: null
+        },
         {
           accounts: {
             maker: maker.publicKey,
