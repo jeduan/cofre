@@ -21,7 +21,7 @@ mod macros;
 mod error;
 
 use {
-    vipers::{assert_owner, assert_keys},
+    vipers::{assert_owner, assert_keys_eq},
     error::EscrowError,
     anchor_lang::prelude::*,
     anchor_lang::solana_program,
@@ -56,19 +56,19 @@ pub mod cofre {
             (Ok(from_token), Ok(to_token)) =>
                 match mint_accounts {
                     (Some(Ok(from_mint)), Some(Ok(to_mint))) => {
-                        assert_keys!(
+                        assert_keys_eq!(
                             to_token.owner, ctx.accounts.maker.key(),
                             "to_token.owner != maker"
                         );
-                        assert_keys!(
+                        assert_keys_eq!(
                             from_token.mint, from_mint.key(),
                             "from_token does not match its corresponding mint"
                         );
-                        assert_keys!(
+                        assert_keys_eq!(
                             to_token.mint, to_mint.key(),
                             "to_token does not match its corresponding mint"
                         );
-                        assert_keys!(
+                        assert_keys_eq!(
                             to_token.mint, to_mint.key(),
                             "to_token does not match its corresponding mint"
                         );
@@ -100,7 +100,7 @@ pub mod cofre {
             (Ok(from_token), Err(_)) =>
                 match mint_accounts {
                     (Some(Ok(from_mint)), None) => {
-                        assert_keys!(
+                        assert_keys_eq!(
                             from_token.mint, from_mint,
                             "from_token does not match its corresponding mint"
                         );
@@ -127,11 +127,11 @@ pub mod cofre {
             (Err(_), Ok(to_token)) =>
                 match mint_accounts {
                     (Some(Ok(to_mint)), None) => {
-                        assert_keys!(
+                        assert_keys_eq!(
                             to_token.mint, to_mint,
                             "to_token does not match its corresponding mint"
                         );
-                        assert_keys!(
+                        assert_keys_eq!(
                             ctx.accounts.maker, ctx.accounts.from_maker_account,
                             "maker must be the same as from_maker_account"
                         );
@@ -175,7 +175,7 @@ pub mod cofre {
     pub fn cancel(ctx: Context<Cancel>, vault_bump: u8) -> ProgramResult {
         match ctx.accounts.escrow_state.trade {
             Trade::SplSpl { from_token, .. } | Trade::SplSol { from_token, .. } => {
-                assert_keys!(
+                assert_keys_eq!(
                     ctx.accounts.from_maker_account, from_token,
                     "escrow_state.trade.from_token does not match from_maker_account"
                 );
@@ -188,7 +188,7 @@ pub mod cofre {
                 ctx.accounts.close_escrow_vault_token(vault_bump)?;
             }
             Trade::SolSpl { from_native, .. } => {
-                assert_keys!(
+                assert_keys_eq!(
                     ctx.accounts.from_maker_account, from_native,
                     "escrow_state.trade.from_native does not match from_maker_account"
                 );
@@ -205,11 +205,11 @@ pub mod cofre {
     pub fn exchange(ctx: Context<Exchange>, vault_bump: u8) -> ProgramResult {
         match ctx.accounts.escrow_state.trade {
             Trade::SplSpl { to_token, .. } => {
-                assert_keys!(
+                assert_keys_eq!(
                     to_token, ctx.accounts.to_maker_account,
                     "to_token in escrow_state is different than provided to_maker_account"
                 );
-                assert_keys!(
+                assert_keys_eq!(
                     ctx.accounts.escrow_state.maker, ctx.accounts.maker,
                     "maker in escrow_state is different than provided maker"
                 );
@@ -224,15 +224,15 @@ pub mod cofre {
                 ctx.accounts.close_escrow_vault_token(vault_bump)?;
             }
             Trade::SolSpl { from_native, to_token, .. } => {
-                assert_keys!(
+                assert_keys_eq!(
                     to_token, ctx.accounts.to_maker_account,
                     "to_token in escrow_state is different than provided to_maker_account"
                 );
-                assert_keys!(
+                assert_keys_eq!(
                     ctx.accounts.taker, ctx.accounts.to_taker_account,
                     "taker is different than provided to_taker_account"
                 );
-                assert_keys!(
+                assert_keys_eq!(
                     from_native, ctx.accounts.maker,
                     "from_token in state is different than provided maker"
                 );
@@ -248,11 +248,11 @@ pub mod cofre {
                 ctx.accounts.close_escrow_vault_native(vault_bump)?;
             }
             Trade::SplSol { to_native, .. } => {
-                assert_keys!(
+                assert_keys_eq!(
                     to_native, ctx.accounts.to_maker_account,
                     "to_native in escrow_state is different than provided to_maker_account"
                 );
-                assert_keys!(
+                assert_keys_eq!(
                     ctx.accounts.maker, ctx.accounts.to_maker_account,
                     "maker is different than provided to_maker_account"
                 );
