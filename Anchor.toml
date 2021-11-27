@@ -11,4 +11,4 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn test"
-# test = "yarn test:inspect"
+# test-inspect = "yarn test:inspect"
