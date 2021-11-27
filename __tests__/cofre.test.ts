@@ -7,7 +7,6 @@ import {
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
 } from "@solana/web3.js";
-import assert from "assert";
 
 describe("cofre", () => {
   const provider = Provider.env();
@@ -186,36 +185,30 @@ describe("cofre", () => {
       );
 
       // Check that the owner of the maker account is still the maker
-      assert.ok(_makerTokenA.owner.equals(maker.publicKey));
+      expect(_makerTokenA.owner).toEqual(maker.publicKey);
 
       // Check that the owner of the vault is the PDA.
-      assert.ok(escrowVaultToken.owner.equals(escrowVault));
-      assert.strictEqual(escrowVaultToken.amount.toNumber(), makerAmount);
-      assert.ok(escrowVaultToken.mint.equals(mintA.publicKey));
+      expect(escrowVaultToken.owner).toEqual(escrowVault);
+      expect(escrowVaultToken.amount.toNumber()).toBe(makerAmount);
+      expect(escrowVaultToken.mint).toEqual(mintA.publicKey);
 
       // Check that the values in the escrow account match what we expect.
-      assert.ok(escrowStateAccount.maker.equals(maker.publicKey));
-      assert.strictEqual(
-        escrowStateAccount.makerAmount.toNumber(),
-        makerAmount
-      );
-      assert.strictEqual(
-        escrowStateAccount.takerAmount.toNumber(),
-        takerAmount
-      );
-      assert.ok(escrowStateAccount.trade.splSpl.fromToken.equals(makerTokenA));
-      assert.ok(
-        escrowStateAccount.trade.splSpl.fromMint.equals(mintA.publicKey)
-      );
-      assert.ok(escrowStateAccount.trade.splSpl.toToken.equals(makerTokenB));
-      assert.ok(escrowStateAccount.trade.splSpl.toMint.equals(mintB.publicKey));
-      assert.ok(escrowStateAccount.vault.equals(escrowVault));
+      expect(escrowStateAccount.maker).toEqual(maker.publicKey);
+      expect(escrowStateAccount.makerAmount.toNumber()).toBe(makerAmount);
+      expect(escrowStateAccount.takerAmount.toNumber()).toBe(takerAmount);
+      expect(escrowStateAccount.trade.splSpl.fromToken).toEqual(makerTokenA);
+      expect(escrowStateAccount.trade.splSpl.fromMint).toEqual(mintA.publicKey);
+      expect(escrowStateAccount.trade.splSpl.toToken).toEqual(makerTokenB);
+      expect(escrowStateAccount.trade.splSpl.toMint).toEqual(mintB.publicKey);
+      expect(escrowStateAccount.vault).toEqual(escrowVault);
     });
 
-    it("Invalid Exchange", async () => {
+    it("Invalid Exchange", () => {
+      expect.assertions(1);
       // Try to Exchange with the wrong taker account mint
-      await assert.rejects(
-        program.rpc.exchange(new BN(vaultBump), {
+      debugger;
+      return program.rpc
+        .exchange(new BN(vaultBump), {
           accounts: {
             taker: taker.publicKey,
             fromTakerAccount: takerTokenC,
@@ -228,13 +221,12 @@ describe("cofre", () => {
             systemProgram: SystemProgram.programId,
           },
           signers: [taker],
-        }),
-        (err: any) => {
-          return err.logs.includes(
+        })
+        .catch((err) => {
+          expect(err.logs).toContain(
             "Program log: Error: Account not associated with this Mint"
           );
-        }
-      );
+        });
     });
 
     it("Exchange", async () => {
@@ -280,17 +272,16 @@ describe("cofre", () => {
       );
 
       // Check that the maker gets back ownership of their token account.
-      assert.ok(_makerTokenA.owner.equals(maker.publicKey));
-      assert.strictEqual(_makerTokenA.amount.toNumber(), 0);
-      assert.strictEqual(_makerTokenB.amount.toNumber(), takerAmount);
-      assert.strictEqual(_takerTokenA.amount.toNumber(), makerAmount);
-      assert.strictEqual(_takerTokenB.amount.toNumber(), 0);
+      expect(_makerTokenA.owner).toEqual(maker.publicKey);
+      expect(_makerTokenA.amount.toNumber()).toBe(0);
+      expect(_makerTokenB.amount.toNumber()).toBe(takerAmount);
+      expect(_takerTokenA.amount.toNumber()).toBe(makerAmount);
+      expect(_takerTokenB.amount.toNumber()).toBe(0);
 
       // Check that escrowState and vault account is gone
-      assert.strictEqual(stateAfterEscrow, null);
-      assert.strictEqual(vaultAfterEscrow, null);
-      assert.strictEqual(
-        makerAfterEscrow!.lamports,
+      expect(stateAfterEscrow).toBe(null);
+      expect(vaultAfterEscrow).toBe(null);
+      expect(makerAfterEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports +
           stateBeforeEscrow!.lamports +
           vaultBeforeEscrow!.lamports
@@ -354,11 +345,11 @@ describe("cofre", () => {
       );
 
       // Check all the funds were sent back there.
-      assert.strictEqual(_makerTokenA.amount.toNumber(), newMakerAmount);
+      expect(_makerTokenA.amount.toNumber()).toBe(newMakerAmount);
 
       // Check Vault and State are gone
-      assert.strictEqual(escrowVaultAccountInfo, null);
-      assert.strictEqual(escrowStateAccountInfo, null);
+      expect(escrowVaultAccountInfo).toBeNull();
+      expect(escrowStateAccountInfo).toBeNull();
     });
   });
 
@@ -416,38 +407,32 @@ describe("cofre", () => {
       );
 
       // Check that the maker gave the amount, and paid for the escrowState
-      assert.strictEqual(
-        makerAccountInfo!.lamports,
+      expect(makerAccountInfo!.lamports).toBe(
         makerBeforeEscrow!.lamports -
           makerAmountLamports -
           escrowStateAccountInfo!.lamports
       );
 
       // Check that the vault holds the makerAmount
-      assert.strictEqual(escrowVaultAccountInfo!.lamports, makerAmountLamports);
+      expect(escrowVaultAccountInfo!.lamports).toBe(makerAmountLamports);
 
       // Check that the values in the escrow account match what we expect.
-      assert.ok(escrowStateAccount.maker.equals(maker.publicKey));
-      assert.strictEqual(
-        escrowStateAccount.makerAmount.toNumber(),
-        makerAmount
+      expect(escrowStateAccount.maker).toEqual(maker.publicKey);
+      expect(escrowStateAccount.makerAmount.toNumber()).toBe(makerAmount);
+      expect(escrowStateAccount.takerAmount.toNumber()).toBe(takerAmount);
+      expect(escrowStateAccount.trade.solSpl.fromNative).toEqual(
+        maker.publicKey
       );
-      assert.strictEqual(
-        escrowStateAccount.takerAmount.toNumber(),
-        takerAmount
-      );
-      assert.ok(
-        escrowStateAccount.trade.solSpl.fromNative.equals(maker.publicKey)
-      );
-      assert.ok(escrowStateAccount.trade.solSpl.toToken.equals(makerTokenB));
-      assert.ok(escrowStateAccount.trade.solSpl.toMint.equals(mintB.publicKey));
-      assert.ok(escrowStateAccount.vault.equals(escrowVault));
+      expect(escrowStateAccount.trade.solSpl.toToken).toEqual(makerTokenB);
+      expect(escrowStateAccount.trade.solSpl.toMint).toEqual(mintB.publicKey);
+      expect(escrowStateAccount.vault).toEqual(escrowVault);
     });
 
-    it("Invalid Exchange", async () => {
+    it("Invalid Exchange", () => {
+      expect.assertions(1);
       // Try to Exchange with the wrong taker account mint
-      await assert.rejects(
-        program.rpc.exchange(new BN(vaultBump), {
+      return program.rpc
+        .exchange(new BN(vaultBump), {
           accounts: {
             taker: taker.publicKey,
             fromTakerAccount: takerTokenC,
@@ -460,14 +445,12 @@ describe("cofre", () => {
             systemProgram: SystemProgram.programId,
           },
           signers: [taker],
-        }),
-        (err: any) => {
-          // console.error(err)
-          return err.logs.includes(
+        })
+        .catch((err) => {
+          expect(err.logs).toContain(
             "Program log: Error: Account not associated with this Mint"
           );
-        }
-      );
+        });
     });
 
     it("Exchange", async () => {
@@ -485,7 +468,7 @@ describe("cofre", () => {
       );
       let makerBeforeEscrowTokenB = await mintB.getAccountInfo(makerTokenB);
 
-      assert.strictEqual(vaultBeforeEscrow!.lamports, makerAmountLamports);
+      expect(vaultBeforeEscrow!.lamports).toBe(makerAmountLamports);
 
       let transactionSignature = await program.rpc.exchange(new BN(vaultBump), {
         accounts: {
@@ -528,26 +511,23 @@ describe("cofre", () => {
       );
 
       // Maker gets escrowState rent
-      assert.strictEqual(
-        makerAfterEscrow!.lamports,
+      expect(makerAfterEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports + stateBeforeEscrow!.lamports
       );
       // Maker gets takerAmount of TokenB
-      assert.strictEqual(
-        makerAfterEscrowTokenB.amount.toNumber(),
+      expect(makerAfterEscrowTokenB.amount.toNumber()).toBe(
         makerBeforeEscrowTokenB.amount.toNumber() + takerAmount
       );
       // Taker gets escrowVault lamports
-      assert.strictEqual(
-        takerAfterEscrow!.lamports,
+      expect(takerAfterEscrow!.lamports).toBe(
         takerBeforeEscrow!.lamports + makerAmountLamports
       );
       // Taker loses takerAmount of TokenB
-      assert.strictEqual(takerAfterTokenB.amount.toNumber(), 0);
+      expect(takerAfterTokenB.amount.toNumber()).toBe(0);
 
       // Check that escrowState and escrowVault accounts are gone
-      assert.strictEqual(stateAfterEscrow, null);
-      assert.strictEqual(vaultAfterEscrow, null);
+      expect(stateAfterEscrow).toBeNull();
+      expect(vaultAfterEscrow).toBeNull();
     });
 
     it("Cancel", async () => {
@@ -591,13 +571,12 @@ describe("cofre", () => {
         escrowState.publicKey
       );
 
-      assert.strictEqual(
-        makerDuringEscrow!.lamports,
+      expect(makerDuringEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports -
           stateDuringEscrow!.lamports -
           vaultDuringEscrow!.lamports
       );
-      assert.strictEqual(vaultDuringEscrow!.lamports, newMakerAmountLamports);
+      expect(vaultDuringEscrow!.lamports).toBe(newMakerAmountLamports);
 
       // Cancel the escrow.
       await program.rpc.cancel(new BN(vaultBump), {
@@ -617,12 +596,8 @@ describe("cofre", () => {
       );
 
       // Check all the funds were sent back there.
-      assert.strictEqual(
-        makerBeforeEscrow!.lamports,
-        makerAfterCancel!.lamports
-      );
-      assert.strictEqual(
-        makerAfterCancel!.lamports,
+      expect(makerBeforeEscrow!.lamports).toBe(makerAfterCancel!.lamports);
+      expect(makerAfterCancel!.lamports).toBe(
         makerDuringEscrow!.lamports +
           vaultDuringEscrow!.lamports +
           stateDuringEscrow!.lamports
@@ -679,40 +654,30 @@ describe("cofre", () => {
       );
 
       // Check that the maker gave the amount, and paid for the escrowState
-      assert.strictEqual(
-        makerAccountInfo!.lamports,
+      expect(makerAccountInfo!.lamports).toBe(
         makerBeforeEscrow!.lamports -
           escrowStateAccountInfo!.lamports -
           escrowVaultAccountInfo!.lamports
       );
 
       // Check that the vault holds the makerAmount of Token A
-      assert.strictEqual(escrowVaultToken.amount.toNumber(), makerAmount);
+      expect(escrowVaultToken.amount.toNumber()).toBe(makerAmount);
 
       // Check that the values in the escrow account match what we expect.
-      assert.ok(escrowStateAccount.maker.equals(maker.publicKey));
-      assert.strictEqual(
-        escrowStateAccount.makerAmount.toNumber(),
-        makerAmount
-      );
-      assert.strictEqual(
-        escrowStateAccount.takerAmount.toNumber(),
-        takerAmount
-      );
-      assert.ok(
-        escrowStateAccount.trade.splSol.toNative.equals(maker.publicKey)
-      );
-      assert.ok(escrowStateAccount.trade.splSol.fromToken.equals(makerTokenA));
-      assert.ok(
-        escrowStateAccount.trade.splSol.fromMint.equals(mintA.publicKey)
-      );
-      assert.ok(escrowStateAccount.vault.equals(escrowVault));
+      expect(escrowStateAccount.maker).toEqual(maker.publicKey);
+      expect(escrowStateAccount.makerAmount.toNumber()).toBe(makerAmount);
+      expect(escrowStateAccount.takerAmount.toNumber()).toBe(takerAmount);
+      expect(escrowStateAccount.trade.splSol.toNative).toEqual(maker.publicKey);
+      expect(escrowStateAccount.trade.splSol.fromToken).toEqual(makerTokenA);
+      expect(escrowStateAccount.trade.splSol.fromMint).toEqual(mintA.publicKey);
+      expect(escrowStateAccount.vault).toEqual(escrowVault);
     });
 
-    it("Invalid Exchange", async () => {
+    it("Invalid Exchange", () => {
+      expect.assertions(1);
       // Try to Exchange with the wrong taker account mint
-      await assert.rejects(
-        program.rpc.exchange(new BN(vaultBump), {
+      return program.rpc
+        .exchange(new BN(vaultBump), {
           accounts: {
             taker: taker.publicKey,
             fromTakerAccount: taker.publicKey,
@@ -725,14 +690,12 @@ describe("cofre", () => {
             systemProgram: SystemProgram.programId,
           },
           signers: [taker],
-        }),
-        (err: any) => {
-          // console.error(err)
-          return err.logs.includes(
+        })
+        .catch((err) => {
+          expect(err.logs).toContain(
             "Program log: Error: Account not associated with this Mint"
           );
-        }
-      );
+        });
     });
 
     it("Exchange", async () => {
@@ -753,7 +716,7 @@ describe("cofre", () => {
       const makerBeforeEscrowTokenA = await mintA.getAccountInfo(makerTokenA);
       const takerBeforeTokenA = await mintA.getAccountInfo(takerTokenA);
 
-      assert.strictEqual(vaultBeforeEscrow!.amount.toNumber(), makerAmount);
+      expect(vaultBeforeEscrow!.amount.toNumber()).toBe(makerAmount);
 
       let transactionSignature = await program.rpc.exchange(new BN(vaultBump), {
         accounts: {
@@ -794,8 +757,7 @@ describe("cofre", () => {
       const takerAfterTokenA = await mintA.getAccountInfo(takerTokenA);
 
       // Maker gets escrowState rent + escrowVault rent
-      assert.strictEqual(
-        makerAfterEscrow!.lamports,
+      expect(makerAfterEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports +
           stateAccountBeforeEscrow!.lamports +
           vaultAccountBeforeEscrow!.lamports +
@@ -803,19 +765,17 @@ describe("cofre", () => {
       );
 
       // Taker gets makerAmount of TokenA
-      assert.strictEqual(
-        takerAfterTokenA.amount.toNumber(),
+      expect(takerAfterTokenA.amount.toNumber()).toBe(
         takerBeforeTokenA.amount.toNumber() + makerAmount
       );
       // Taker loses takerAmountLamports lamports
-      assert.strictEqual(
-        takerAfterEscrow!.lamports,
+      expect(takerAfterEscrow!.lamports).toBe(
         takerBeforeEscrow!.lamports - takerAmountLamports
       );
 
       // Check that escrowState and escrowVault accounts are gone
-      assert.strictEqual(stateAfterEscrow, null);
-      assert.strictEqual(vaultAfterEscrow, null);
+      expect(stateAfterEscrow).toBeNull();
+      expect(vaultAfterEscrow).toBeNull();
     });
 
     it("Cancel", async () => {
@@ -859,13 +819,12 @@ describe("cofre", () => {
         escrowState.publicKey
       );
 
-      assert.strictEqual(
-        makerDuringEscrow!.lamports,
+      expect(makerDuringEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports -
           stateDuringEscrow!.lamports -
           vaultDuringEscrow!.lamports
       );
-      assert.strictEqual(vaultDuringEscrow!.lamports, newMakerAmountLamports);
+      expect(vaultDuringEscrow!.lamports).toBe(newMakerAmountLamports);
 
       // Cancel the escrow.
       await program.rpc.cancel(new BN(vaultBump), {
@@ -885,22 +844,14 @@ describe("cofre", () => {
       );
 
       // Check all the funds were sent back there.
-      assert.strictEqual(
-        makerBeforeEscrow!.lamports,
-        makerAfterCancel!.lamports
-      );
-      assert.strictEqual(
-        makerDuringEscrow!.lamports,
+      expect(makerBeforeEscrow!.lamports).toBe(makerAfterCancel!.lamports);
+      expect(makerDuringEscrow!.lamports).toBe(
         makerBeforeEscrow!.lamports -
           vaultDuringEscrow!.lamports -
           stateDuringEscrow!.lamports
       );
-      assert.strictEqual(
-        makerAfterCancel!.lamports,
-        makerBeforeEscrow!.lamports
-      );
-      assert.strictEqual(
-        makerAfterCancel!.lamports,
+      expect(makerAfterCancel!.lamports).toBe(makerBeforeEscrow!.lamports);
+      expect(makerAfterCancel!.lamports).toBe(
         makerDuringEscrow!.lamports +
           vaultDuringEscrow!.lamports +
           stateDuringEscrow!.lamports

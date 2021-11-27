@@ -13,7 +13,7 @@
     "typescript": "^4.4.4"
   },
   "scripts": {
-    "test": "jest",
-    "test:inspect": "node --inspect-brk node_modules/.bin/jest --runInBand"
+    "test": "jest --silent",
+    "test:inspect": "node --inspect-brk node_modules/.bin/jest --runInBand --silent"
   }
 }
